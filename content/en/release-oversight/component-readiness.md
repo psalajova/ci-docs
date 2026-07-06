@@ -22,6 +22,47 @@ Take special note of the "Show Regressed Tests" table at the top of every compon
 
 Parameters for the report can be adjusted on the left-hand side of the UI, but a default view is presented on load and this is our primary "release readiness" view. We hope to expand the variants included by default over time as they are proven safe and stable enough to be there. A mechanism for custom report views is in development.
 
+## How Regressions Are Detected
+
+Component Readiness uses two methods to determine if a test is regressed: Fisher's Exact Test (the default) and pass rate comparison. The method used depends on whether historical basis data is available for the test.
+
+### Fisher's Exact Test (Default)
+
+For tests that have historical data in the basis release, Component Readiness compares the sample (current dev release) pass rate against the basis (last stable GA release) pass rate using [Fisher's Exact Test](https://en.wikipedia.org/wiki/Fisher%27s_exact_test). Several parameters control when and how this test is applied:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| **Confidence** | 95% | The required statistical significance level for Fisher's Exact Test to flag a regression. |
+| **Pity Factor** | 5% | The sample pass rate must drop more than this many percentage points below the basis before Fisher's test is even evaluated. This prevents flagging tests with only tiny pass rate drops. |
+| **Minimum Failures** | 3 | At least this many failures must be present in the sample for a regression to be considered. |
+
+When the Fisher test determines a statistically significant regression, the severity is classified based on the magnitude of the pass rate drop:
+
+- **Significant Regression**: The pass rate dropped by 15 percentage points or less from the basis.
+- **Extreme Regression**: The pass rate dropped by more than 15 percentage points from the basis.
+
+### Pass Rate Comparison (New Tests)
+
+For new tests that have no basis data, or when pass rate mode is explicitly configured, Component Readiness compares the sample pass rate against a required success threshold. At least 6 runs are needed before this check applies.
+
+- **Significant Regression**: The sample pass rate is below the required threshold.
+- **Extreme Regression**: The sample pass rate falls below 2x the allowed failure rate. For example, if the required pass rate is 90% (allowing 10% failures), an extreme regression is anything below 80% (20% failures). If the required pass rate is 95%, extreme is anything below 90%.
+
+### Regression Statuses
+
+Once a regression is detected, it may go through several states as triage and fixes progress:
+
+| Status | Meaning |
+|--------|---------|
+| **Extreme Regression** | Pass rate dropped more than 15 percentage points (Fisher) or below 2x the allowed failure rate (pass rate mode). |
+| **Significant Regression** | Statistically significant regression that does not meet the extreme threshold. |
+| **Extreme Triaged Regression** | An extreme regression where all failures are attributed to triaged incidents. The regression clears when triaged data is factored in. |
+| **Significant Triaged Regression** | A significant regression that similarly clears with triaged incident data. |
+| **Fixed Regression** | Someone has marked the underlying bug as fixed, but the fix has not yet rolled off the sample window. |
+| **Failed Fixed Regression** | A bug was marked as fixed, but failures are still being observed past the resolution time. |
+
+These parameters can be adjusted via the filter controls on the left side of the Component Readiness UI, though the defaults above are used for the release-blocking view.
+
 ## Test Details
 
 Navigating from the report page down to the test details page for a regressed test can be done either by clicking through the red cells in the report or by using the test table in the top right of each report. The test details page will display the data backing the decision to mark a test as regressed, including a great visualization of which jobs the failures are appearing in. This page also contains a button to file a new Jira for an issue, and lists all open linked Jiras. (*NOTE*: Jiras are linked by mentioning the test name in the description or a comment). It is important for visibility in the organization to ensure that your component has a linked active bug when it is regressed, as per above Component Readiness is blocking for release unless an exception is granted by senior management.
