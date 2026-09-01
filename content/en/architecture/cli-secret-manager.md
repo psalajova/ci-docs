@@ -277,6 +277,10 @@ Rotation instructions: rotated quarterly via the cloud console
 Request information:   https://issues.redhat.com/browse/DPTP-1234
 ```
 
+Fields that were not provided are shown as `(not set)` -- this includes secrets
+created before this metadata was collected, as well as fields the creator marked
+as not applicable by entering `none` at the prompt.
+
 {{% alert title="Note" color="info" %}}
 `describe` only reads metadata -- it never fetches or displays the secret value,
 consistent with the security model. Add `-o json` to get the metadata in JSON
