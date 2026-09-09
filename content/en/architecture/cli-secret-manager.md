@@ -12,7 +12,7 @@ The Secret Manager CLI is the primary way to manage secrets used in CI workflows
 - Create new secrets
 - List, delete and update existing secrets
 - Inspect a secret's metadata (creation date, ownership info) without revealing its value
-- Retrieve authentication information for the service account tied to a secret collection
+- Retrieve authentication information for a collection's service account, where one has been requested
 
 {{% alert title="Note" color="info" %}}
 In the future, we may provide a GUI (e.g., a web interface),
@@ -192,7 +192,7 @@ Once created, the secret is immediately available for use in CI jobs that refere
 For secrets that are part of a [bundle](/how-tos/adding-a-new-secret-to-ci-gsm/#composed-secrets-bundles) (e.g., cluster profile secrets), it may take 1-2 hours for the changes to be propagated.
 
 {{% alert title="Note" color="info" %}}
-We encourage users to automate secret rotation using the dedicated write-only service account provided for each collection. [Learn more](#getting-the-service-account-associated-with-a-collection).
+Secret rotation can be automated with a write-only service account, if your collection has one. [Learn more](#getting-the-service-account-associated-with-a-collection).
 {{% /alert %}}
 
 ### Creating a secret from a literal string
@@ -341,20 +341,30 @@ sm delete --help
 
 ## Getting the service account associated with a collection
 
-Each secret collection has a dedicated write-only service account associated with it. This service account is intended for automating secret rotation (e.g., by setting up a scheduled job in your team).
+A secret collection can have a write-only service account, intended for automating secret rotation
+(e.g., by setting up a scheduled job in your team).
 
 This service account:
 
 - Can create, update, and delete secrets in the collection.
 - Cannot read secrets — this is by design, to protect sensitive data.
 
-To retrieve the authentication credentials (in JSON format) for this service account, run:
+Service accounts are **not created for every collection**. Yours has one only if it is listed under
+`updater_service_accounts` in
+[`core-services/sync-rover-groups/_config.yaml`](https://github.com/openshift/release/blob/master/core-services/sync-rover-groups/_config.yaml).
+See [requesting one](/how-tos/adding-a-new-secret-to-ci-gsm/#access-for-automation-that-is-not-a-person)
+if you need it. You do not need one to manage secrets yourself — membership of the collection's Rover
+group is enough.
+
+To retrieve the authentication credentials (in JSON format) for a collection that has one, run:
 
 ```sh
 sm get-sa -c my-collection
 ```
 
-This command does not create a new service account — it simply returns the credentials for the one already associated with the specified collection. You can use these credentials to configure a script or automation tool that rotates secrets on a regular basis.
+This command does not create a service account — it returns the credentials for the one already
+associated with the collection, and fails if the collection has none. You can use these credentials
+to configure a script or automation tool that rotates secrets on a regular basis.
 
 # Troubleshooting
 
@@ -374,6 +384,14 @@ Use `sm update` instead of `sm create` to change the value of an existing secret
 
 The secret exists in one place but not the other (index vs storage). Run `sm delete -c <collection> <group/field>` to clean up, then `sm create` to recreate it.
 If that doesn't help, please reach out to the Test Platform team on `#forum-ocp-testplatform` Slack channel.
+
+### `sm get-sa` fails for a collection you have access to
+
+The collection most likely has no service account — they are only created for collections listed under
+`updater_service_accounts`. See
+[requesting one](/how-tos/adding-a-new-secret-to-ci-gsm/#access-for-automation-that-is-not-a-person).
+You do not need a service account to manage secrets yourself; your Rover group membership already
+covers that.
 
 # Commands cheat sheet
 
@@ -442,4 +460,4 @@ In the following examples, `sm` stands for `./hack/secret-manager.sh`.
 ## Get Service Account
 
 - `sm get-sa -c my-collection`  
-  Retrieve credentials for the service account associated with the collection.
+  Retrieve credentials for the collection's service account, if it has one.

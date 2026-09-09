@@ -49,6 +49,29 @@ If your team already has a collection, skip to [Step 2](#step-2-create-the-secre
 
 3. After the PR is merged, a postsubmit job will provision the collection. This typically takes under a minute.
 
+Everyone in the Rover group can now create, update and delete secrets in the collection, and list
+what it contains, using the [Secret Manager CLI](/architecture/cli-secret-manager/).
+
+#### Access for automation that is not a person
+
+Access is granted to the Rover group, so it works for anyone who can log in as a member of it. If
+something needs to write secrets without a person behind it -- a Jenkins job, for example -- ask for
+an **updater service account** by naming the collection under `updater_service_accounts`:
+
+```yaml
+groups:
+  your-rover-group-name:
+    secret_collections:
+      - your-collection-name
+    updater_service_accounts:
+      - your-collection-name
+```
+
+Our automation will create a GCP service account scoped to that one collection and stores its key in the
+`<your-collection-name>__updater-service-account` secret, which your group can read.
+
+Removing the collection from the list later deletes the service account and revokes its keys.
+
 ### Step 2: Create the secret
 
 Use the [Secret Manager CLI](/architecture/cli-secret-manager/) to create your secret. If you haven't set up the CLI yet,
